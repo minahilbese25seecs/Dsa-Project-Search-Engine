@@ -39,7 +39,11 @@ def generate_lexicon(file_path):
                     text = text.lower()
 
                     #extract individual words
+<<<<<<< HEAD
                     words = re.findall(r"\b[a-z][a-z0-9]*\b", text)
+=======
+                    words = re.findall(r"\b[a-z]+\b", text)
+>>>>>>> c9a6375 (Filter out numeric and alphanumeric tokens from lexicon)
                     #add words to the set
                     unique_words.update(words)
 
