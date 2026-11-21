@@ -1,0 +1,6 @@
+*.csv
+!dataset/sample_100.csv
+
+venv/
+.venv/
+__pycache__/
