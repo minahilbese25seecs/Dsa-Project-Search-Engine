@@ -39,8 +39,7 @@ def generate_lexicon(file_path):
                     text = text.lower()
 
                     #extract individual words
-                    words = re.findall(r"\b[a-z0-9]+\b", text)
-
+                    words = re.findall(r"\b[a-z][a-z0-9]*\b", text)
                     #add words to the set
                     unique_words.update(words)
 
