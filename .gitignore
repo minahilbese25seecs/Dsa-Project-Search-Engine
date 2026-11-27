@@ -1,5 +1,9 @@
+# ignore all CSV files  but keep the sample
 *.csv
-!dataset/sample_100.csv
+!sample_postings.csv
+
+# full generated indexes (too big for GitHub)
+Output/
 
 venv/
 .venv/
