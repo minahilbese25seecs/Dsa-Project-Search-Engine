@@ -3,6 +3,8 @@ import re    #regular expressions, pulls individual words out of text
 import json  #to save the lexicon as a JSON file
 import os    #operating system, creates the output folder
 
+#------------------LEXICON---------------------
+
 #python's csv module refuses to read any single cell larger than 131,072
 csv.field_size_limit(2**31 - 1) #allows very long cells as some job descriptions are very long
 
@@ -72,3 +74,67 @@ def save_lexicon(lexicon, output_path):
     #success messages
     print("Lexicon saved successfully!")
     print("Total unique words:", len(lexicon))
+
+    #------------------FORWARD INDEX---------------------
+
+def generate_forward_index(file_path, lexicon, forward_path, metadata_path):
+    #reads the dataset again and writes one line per document
+
+    metadata = {} #small info per document used later for ranking and showing results
+
+    os.makedirs(os.path.dirname(forward_path) or ".", exist_ok=True)
+
+    with open(file_path, "r", encoding="utf-8-sig", errors="replace", newline="") as src, \
+         open(forward_path, "w", encoding="utf-8") as out:
+
+        #doc_id is simply the row number: 0, 1, 2, ...
+        for doc_id, row in enumerate(csv.DictReader(src)):
+
+            terms = {}   #word_id -> [frequency, field_mask, first_position]
+            doc_len = 0  #total number of words in this document
+
+            for bit, column in enumerate(text_columns):
+                text = row.get(column)
+                if not text:
+                    continue
+
+                flag = 1 << bit #every column gets its own flag: 1, 2, 4, 8, 16, 32, 64
+
+                for position, word in enumerate(tokenize(text), start=1):
+                    doc_len += 1
+                    word_id = lexicon[word]
+
+                    if word_id not in terms:
+                        terms[word_id] = [0, 0, 0]
+
+                    info = terms[word_id]
+                    info[0] += 1    #frequency: how many times the word appears
+                    info[1] |= flag #field_mask: remembers which columns contain the word
+
+                    #position of the first appearance, only counted inside the description
+                    if column == "description" and info[2] == 0:
+                        info[2] = position
+
+            #one flat list per document: [word_id, freq, mask, pos, word_id, freq, mask, pos, ...]
+            flat = [v for word_id in sorted(terms) for v in (word_id, *terms[word_id])]
+
+            out.write(json.dumps({"d": doc_id, "len": doc_len, "t": flat},
+                                 separators=(",", ":")) + "\n")
+
+            #info needed later to rank and display the results
+            metadata[doc_id] = {
+                "job_id": row.get("job_id"),
+                "title": row.get("title"),
+                "company": row.get("company_name"),
+                "location": row.get("location"),
+                "views": row.get("views"),
+                "applies": row.get("applies"),
+                "listed_time": row.get("listed_time"),
+                "url": row.get("job_posting_url"),
+                "snippet": " ".join((row.get("description") or "")[:400].split())[:200]
+            }
+
+    save_json(metadata, metadata_path)
+
+    print("Forward index saved successfully!")
+    print("Total documents:", len(metadata))
