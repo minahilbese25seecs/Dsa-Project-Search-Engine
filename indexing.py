@@ -3,6 +3,10 @@ import re    #regular expressions, pulls individual words out of text
 import json  #to save the lexicon as a JSON file
 import os    #operating system, creates the output folder
 
+#for inverted index
+from array import array #compact integer lists
+from collections import defaultdict  #creates a missing entry automatically
+
 #------------------LEXICON---------------------
 
 #python's csv module refuses to read any single cell larger than 131,072
@@ -138,3 +142,29 @@ def generate_forward_index(file_path, lexicon, forward_path, metadata_path):
 
     print("Forward index saved successfully!")
     print("Total documents:", len(metadata))
+
+    #------------------INVERTED INDEX---------------------
+def generate_inverted_index(forward_path, inverted_path):
+    #reads the forward index and flips it
+
+    #word_id -> [doc, freq, mask, pos, doc, freq, mask, pos, ...]
+    inverted = defaultdict(lambda: array("i"))
+
+    with open(forward_path, "r", encoding="utf-8") as file:
+        for line in file: #one line = one document
+            record = json.loads(line)
+            doc_id = record["d"]
+            flat = record["t"]
+
+            #the list holds 4 numbers per word so jump 4 at a time
+            for i in range(0, len(flat), 4):
+                inverted[flat[i]].extend((doc_id, flat[i + 1], flat[i + 2], flat[i + 3]))
+
+    #one line per word, sorted by word_id
+    with open(inverted_path, "w", encoding="utf-8") as out:
+        for word_id in sorted(inverted):
+            postings = inverted[word_id]
+            out.write('{"w":%d,"p":[%s]}\n' % (word_id, ",".join(map(str, postings))))
+
+    print("Inverted index saved successfully!")
+    print("Total words:", len(inverted))
